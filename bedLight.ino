@@ -1,79 +1,86 @@
-/*
-  Arduino Starter Kit example
-  Project 8 - Digital Hourglass
+#include <SPI.h>
 
-  This sketch is written to accompany Project 8 in the Arduino Starter Kit
+const int upperBrightSwitchPin = 3;
+const int lowerBrightSwitchPin = 2;
+const int upperBrightLedArray = 11;
+const int lowerBrightLedArray = 10;
 
-  Parts required:
-  - 10 kilohm resistor
-  - six 220 ohm resistors
-  - six LEDs
-  - tilt switch
+unsigned long upperBrightLedToggleTime = 0;
+unsigned long lowerBrightLedToggleTime = 0;
 
-  created 13 Sep 2012
-  by Scott Fitzgerald
+unsigned long currentTime = 0;
 
-  http://www.arduino.cc/starterKit
+int upperBrightSwitchState = 0;
+int upperPrevBrightSwitchState = 0;
+int upperBrightLedState = 0; //light is off if 0;
 
-  This example code is part of the public domain.
-*/
+int lowerBrightSwitchState = 0;
+int lowerPrevBrightSwitchState = 0;
+int lowerBrightLedState = 0; //light is off if 0;
 
-// named constant for the switch pin
-const int switchPin = 8;
-
-unsigned long previousTime = 0; // store the last time an LED was updated
-int switchState = 0; // the current switch state
-int prevSwitchState = 0; // the previous switch state
-int led = 2ver; // a variable to refer to the LEDs
-
-// 600000 = 10 minutes in milliseconds
-long interval = 600000; // interval at which to light the next LED
+long brightInterval = 900000;
 
 void setup() {
-  // set the LED pins as outputs
-  for (int x = 2; x < 8; x++) {
-    pinMode(x, OUTPUT);
+  pinMode(upperBrightLedArray, OUTPUT);
+  pinMode(lowerBrightLedArray, OUTPUT);
+  pinMode(upperBrightSwitchPin, INPUT);
+  pinMode(lowerBrightSwitchPin, INPUT);
+
+  Serial.begin(9600);
+  while (!Serial) {
+    ; // wait for serial port to connect. Needed for native USB port only
   }
-  // set the tilt switch pin as input
-  pinMode(switchPin, INPUT);
+  Serial.println("ready to log stuff");
+}
+
+void toggleUpperLight(bool forceOff = false) {
+  if (upperBrightLedState == 1 || forceOff) {
+    digitalWrite(upperBrightLedArray, LOW);
+    upperBrightLedState = 0;
+  } else {
+    digitalWrite(upperBrightLedArray, HIGH);
+    upperBrightLedState = 1;
+  }
+  upperBrightLedToggleTime = currentTime;
+  upperPrevBrightSwitchState = upperBrightSwitchState;
+}
+
+
+void toggleLowerLight(bool forceOff = false) {
+  if (lowerBrightLedState == 1 || forceOff) {
+    digitalWrite(lowerBrightLedArray, LOW);
+    lowerBrightLedState = 0;
+  } else {
+    digitalWrite(lowerBrightLedArray, HIGH);
+    lowerBrightLedState = 1;
+  }
+  lowerBrightLedToggleTime = currentTime;
+  lowerPrevBrightSwitchState = lowerBrightSwitchState;
 }
 
 void loop() {
-  // store the time since the Arduino started running in a variable
-  unsigned long currentTime = millis();
+  bool forceOff = true;
+  currentTime = millis();
 
-  // compare the current time to the previous time an LED turned on
-  // if it is greater than your interval, run the if statement
-  if (currentTime - previousTime > interval) {
-    // save the current time as the last time you changed an LED
-    previousTime = currentTime;
-    // Turn the LED on
-    digitalWrite(led, HIGH);
-    // increment the led variable
-    // in 10 minutes the next LED will light up
-    led++;
-
-    if (led == 7) {
-      // the hour is up
-    }
+  // handle upper light
+  if (currentTime - upperBrightLedToggleTime > brightInterval) {
+    toggleUpperLight(forceOff);
   }
 
-  // read the switch value
-  switchState = digitalRead(switchPin);
+  upperBrightSwitchState = digitalRead(upperBrightSwitchPin);
 
-  // if the switch has changed
-  if (switchState != prevSwitchState) {
-    // turn all the LEDs low
-    for (int x = 2; x < 8; x++) {
-      digitalWrite(x, LOW);
-    }
-
-    // reset the LED variable to the first one
-    led = 2;
-
-    //reset the timer
-    previousTime = currentTime;
+  if (upperBrightSwitchState != upperPrevBrightSwitchState) {
+    toggleUpperLight();
   }
-  // set the previous switch state to the current state
-  prevSwitchState = switchState;
+
+  // handle lower light
+  if (currentTime - lowerBrightLedToggleTime > brightInterval) {
+    toggleLowerLight(forceOff);
+  }
+
+  lowerBrightSwitchState = digitalRead(lowerBrightSwitchPin);
+
+  if (lowerBrightSwitchState != lowerPrevBrightSwitchState) {
+    toggleLowerLight();
+  }
 }
