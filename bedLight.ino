@@ -5,13 +5,13 @@ const int upperBrightSwitchPin =7;
 const int lowerBrightSwitchPin = 2;
 const int upperBrightLedArray = 9;
 const int lowerBrightLedArray = 10;
-const int discoButtonPin = 4;
-const int discoButtonLed = 5;
-const int piezoPin = 6;
+const int blueButtonPin = 4;
+const int blueButtonLed = 5;
+const int buzzer = 6;
+
 
 unsigned long upperBrightLedToggleTime = 0;
 unsigned long lowerBrightLedToggleTime = 0;
-unsigned long discoBallToggleTime = 0;
 
 unsigned long currentTime = 0;
 
@@ -25,25 +25,45 @@ int lowerBrightLedState = 0;
 
 long bottomBrightInterval = 900000; // 15 miuntes
 long topBrightInterval = 3600000; // 60 miuntes
-long discoInterval = 420000; // 7 minutes
 
-// notes in the melody:
+
+// beging music stuff
+int tempo = 140;
 int melody[] = {
-  NOTE_C4, NOTE_G3, NOTE_G3, NOTE_A3, NOTE_G3, 0, NOTE_B3, NOTE_C4
+// grabbed from: https://github.com/robsoncouto/arduino-songs/blob/master/takeonme/takeonme.ino
+  NOTE_FS5,8, NOTE_FS5,8,NOTE_D5,8, NOTE_B4,8, REST,8, NOTE_B4,8, REST,8, NOTE_E5,8, 
+  REST,8, NOTE_E5,8, REST,8, NOTE_E5,8, NOTE_GS5,8, NOTE_GS5,8, NOTE_A5,8, NOTE_B5,8,
+  NOTE_A5,8, NOTE_A5,8, NOTE_A5,8, NOTE_E5,8, REST,8, NOTE_D5,8, REST,8, NOTE_FS5,8, 
+  REST,8, NOTE_FS5,8, REST,8, NOTE_FS5,8, NOTE_E5,8, NOTE_E5,8, NOTE_FS5,8, NOTE_E5,8,
+  NOTE_FS5,8, NOTE_FS5,8,NOTE_D5,8, NOTE_B4,8, REST,8, NOTE_B4,8, REST,8, NOTE_E5,8, 
+  
+  REST,8, NOTE_E5,8, REST,8, NOTE_E5,8, NOTE_GS5,8, NOTE_GS5,8, NOTE_A5,8, NOTE_B5,8,
+  NOTE_A5,8, NOTE_A5,8, NOTE_A5,8, NOTE_E5,8, REST,8, NOTE_D5,8, REST,8, NOTE_FS5,8, 
+  REST,8, NOTE_FS5,8, REST,8, NOTE_FS5,8, NOTE_E5,8, NOTE_E5,8, NOTE_FS5,8, NOTE_E5,8,
+  NOTE_FS5,8, NOTE_FS5,8,NOTE_D5,8, NOTE_B4,8, REST,8, NOTE_B4,8, REST,8, NOTE_E5,8, 
+  REST,8, NOTE_E5,8, REST,8, NOTE_E5,8, NOTE_GS5,8, NOTE_GS5,8, NOTE_A5,8, NOTE_B5,8,
+  
+  NOTE_A5,8, NOTE_A5,8, NOTE_A5,8, NOTE_E5,8, REST,8, NOTE_D5,8, REST,8, NOTE_FS5,8, 
+  REST,8, NOTE_FS5,8, REST,8, NOTE_FS5,8, NOTE_E5,8, NOTE_E5,8, NOTE_FS5,8, NOTE_E5,8,
+  
 };
+// sizeof gives the number of bytes, each int value is composed of two bytes (16 bits)
+// there are two values per note (pitch and duration), so for each note there are four bytes
+int notes = sizeof(melody) / sizeof(melody[0]) / 2;
 
-// note durations: 4 = quarter note, 8 = eighth note, etc.:
-int noteDurations[] = {
-  4, 8, 8, 4, 4, 4, 4, 4
-};
+// this calculates the duration of a whole note in ms
+int wholenote = (60000 * 4) / tempo;
+int divider = 0, noteDuration = 0;
+// end music stuff
+
 
 void setup() {
   pinMode(upperBrightLedArray, OUTPUT);
   pinMode(lowerBrightLedArray, OUTPUT);
   pinMode(upperBrightSwitchPin, INPUT);
   pinMode(lowerBrightSwitchPin, INPUT);
-  pinMode(discoButtonPin, INPUT);
-  pinMode(discoButtonLed, OUTPUT);
+  pinMode(blueButtonPin, INPUT);
+  pinMode(blueButtonLed, OUTPUT);
 }
 
 void toggleUpperLight(bool forceOff = false) {
@@ -101,26 +121,27 @@ void loop() {
 
 
   //handle the blue light button
-  if (digitalRead(discoButtonPin) == HIGH) {
-    digitalWrite(discoButtonLed, HIGH);
-    delay(500);
+  if (digitalRead(blueButtonPin) == HIGH) {
+    digitalWrite(blueButtonLed, HIGH);
 
-//    tone(piezoPin, 800, 1000);
-
-    for (int thisNote = 0; thisNote < 8; thisNote++) {
-
-      // to calculate the note duration, take one second divided by the note type.
-      //e.g. quarter note = 1000 / 4, eighth note = 1000/8, etc.
-      int noteDuration = 1000 / noteDurations[thisNote];
-      tone(piezoPin, melody[thisNote], noteDuration);
-  
-      // to distinguish the notes, set a minimum time between them.
-      // the note's duration + 30% seems to work well:
-      int pauseBetweenNotes = noteDuration * 1.30;
-      delay(pauseBetweenNotes);
-      // stop the tone playing:
-      noTone(piezoPin);
+    for (int thisNote = 0; thisNote < notes * 2; thisNote = thisNote + 2) {
+      // calculates the duration of each note
+      divider = melody[thisNote + 1];
+      if (divider > 0) {
+        // regular note, just proceed
+        noteDuration = (wholenote) / divider;
+      } else if (divider < 0) {
+        // dotted notes are represented with negative durations!!
+        noteDuration = (wholenote) / abs(divider);
+        noteDuration *= 1.5; // increases the duration in half for dotted notes
+      }
+      // we only play the note for 90% of the duration, leaving 10% as a pause
+      tone(buzzer, melody[thisNote], noteDuration*0.9);
+      // Wait for the specief duration before playing the next note.
+      delay(noteDuration);
+      // stop the waveform generation before the next note.
+      noTone(buzzer);
     }
-    digitalWrite(discoButtonLed, LOW);
+    digitalWrite(blueButtonLed, LOW);
   } 
 }
